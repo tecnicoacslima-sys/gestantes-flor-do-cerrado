@@ -26,6 +26,9 @@
   header h1 { margin: 0; font-size: 1.2rem; }
   header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.85; }
   .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+  nav { display: flex; justify-content: center; gap: 10px; padding: 8px; background: #0c3b30; }
+  nav a { color: #fff; font-size: 0.8rem; text-decoration: none; opacity: 0.85; }
+  nav a.ativo { opacity: 1; font-weight: 700; text-decoration: underline; }
   .card {
     background: #fff;
     border-radius: 10px;
@@ -77,6 +80,10 @@
   <h1>Cadastro de Gestante</h1>
   <p>ESF Flor do Cerrado</p>
 </header>
+<nav>
+  <a href="index.html" class="ativo">Cadastro</a>
+  <a href="atendimento.html">Atendimento</a>
+</nav>
 
 <div class="container">
   <div class="card">
