@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>App Gestantes - ESF Flor do Cerrado</title>
+<style>
+  :root {
+    --verde-escuro: #0F4B3D;
+    --verde-claro: #B7D34A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6f4;
+    margin: 0;
+    padding: 0 0 40px 0;
+    color: #222;
+  }
+  header {
+    background: var(--verde-escuro);
+    color: #fff;
+    padding: 18px 16px;
+    text-align: center;
+  }
+  header h1 { margin: 0; font-size: 1.2rem; }
+  header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.85; }
+  .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 12px 0 4px;
+    color: var(--verde-escuro);
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+  }
+  button {
+    width: 100%;
+    background: var(--verde-escuro);
+    color: #fff;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 20px;
+  }
+  button:active { opacity: 0.85; }
+  #msg {
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    display: none;
+  }
+  #msg.ok { background: #e3f3e1; color: #1e5c1c; display: block; }
+  #msg.erro { background: #fbe3e3; color: #8a1c1c; display: block; }
+  .hint { font-size: 0.75rem; color: #777; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Cadastro de Gestante</h1>
+  <p>ESF Flor do Cerrado</p>
+</header>
+
+<div class="container">
+  <div class="card">
+    <form id="formCadastro">
+      <label>Nome completo</label>
+      <input type="text" id="NOME" required>
+
+      <label>CNS (Cartão Nacional de Saúde)</label>
+      <input type="text" id="CNS">
+
+      <label>Data de nascimento</label>
+      <input type="date" id="DATA_NASCIMENTO">
+
+      <label>Microárea</label>
+      <input type="text" id="MICROAREA">
+
+      <label>Agente de saúde responsável</label>
+      <input type="text" id="AGENTE_SAUDE">
+
+      <label>Contato (telefone)</label>
+      <input type="tel" id="CONTATO" placeholder="(65) 9xxxx-xxxx">
+
+      <label>DUM (data da última menstruação)</label>
+      <input type="date" id="DUM">
+      <div class="hint">A data provável do parto (DPP) é calculada automaticamente.</div>
+
+      <label>Data de abertura do pré-natal</label>
+      <input type="date" id="DATA_ABERTURA_PRENATAL">
+
+      <label>Status</label>
+      <select id="STATUS">
+        <option value="Ativa">Ativa</option>
+        <option value="Puerpério">Puerpério</option>
+        <option value="Encerrada">Encerrada</option>
+        <option value="Transferida">Transferida</option>
+      </select>
+
+      <label>Observações</label>
+      <textarea id="OBSERVACOES" rows="3"></textarea>
+
+      <button type="submit">Cadastrar gestante</button>
+    </form>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzIL2l8UVyyzdeKfYxBGnabxZMLPYPESn5_cpkpjJdAopERf4nKsjlcUcmVIG0iIVu9zw/exec';
+  const ACCESS_KEY = 'FC_GEST2026'; // igual ao Code.gs
+
+  document.getElementById('formCadastro').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const msg = document.getElementById('msg');
+    msg.className = '';
+    msg.style.display = 'none';
+
+    const dados = {
+      NOME: document.getElementById('NOME').value,
+      CNS: document.getElementById('CNS').value,
+      DATA_NASCIMENTO: document.getElementById('DATA_NASCIMENTO').value,
+      MICROAREA: document.getElementById('MICROAREA').value,
+      AGENTE_SAUDE: document.getElementById('AGENTE_SAUDE').value,
+      CONTATO: document.getElementById('CONTATO').value,
+      DUM: document.getElementById('DUM').value,
+      DATA_ABERTURA_PRENATAL: document.getElementById('DATA_ABERTURA_PRENATAL').value,
+      STATUS: document.getElementById('STATUS').value,
+      OBSERVACOES: document.getElementById('OBSERVACOES').value
+    };
+
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'cadastrar', key: ACCESS_KEY, dados: dados })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.sucesso) {
+          msg.textContent = 'Cadastrada com sucesso! ID: ' + res.id + (res.dpp ? ' — DPP: ' + res.dpp : '');
+          msg.className = 'ok';
+          document.getElementById('formCadastro').reset();
+        } else {
+          msg.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
+          msg.className = 'erro';
+        }
+      })
+      .catch(() => {
+        msg.textContent = 'Erro de conexão com o servidor.';
+        msg.className = 'erro';
+      });
+  });
+</script>
+
+</body>
+</html>
