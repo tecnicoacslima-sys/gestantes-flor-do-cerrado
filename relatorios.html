@@ -40,6 +40,16 @@
   .resumo-gestante .nome { font-weight: 700; color: var(--verde-escuro); }
   .resumo-gestante .contagem { font-size: 0.85rem; }
   select#filtroACS { margin-bottom: 10px; }
+  .btn-pdf { background: #6b7d78; margin-top: 10px; }
+  .cabecalho-print { display: none; }
+
+  @media print {
+    nav, .tabs, #busca, #btnBuscar, #resultados, .btn-pdf, #filtroACS { display: none !important; }
+    body { background: #fff; padding: 0; }
+    header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .card { box-shadow: none; border: 1px solid #ccc; }
+    .cabecalho-print { display: block; font-size: 0.8rem; color: #555; margin-bottom: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -157,6 +167,7 @@
         ` : '';
 
         painel.innerHTML = `
+          <div class="cabecalho-print">Relatório gerado em ${formatarDataBR(new Date().toISOString())} — ESF Flor do Cerrado</div>
           <div style="font-weight:700; color:var(--verde-escuro); margin-bottom:6px;">
             ${res.gestante.NOME} (${res.gestante.ID_GESTANTE}) — ${atingidos}/${total} indicadores atingidos
           </div>
@@ -167,6 +178,7 @@
             </div>
           `).join('')}
           ${htmlCronograma}
+          <button class="btn-pdf" onclick="window.print()">Baixar / Imprimir PDF</button>
         `;
       });
   }
@@ -204,18 +216,22 @@
 
     if (!filtrados.length) { lista.innerHTML = '<div>Nenhuma gestante encontrada.</div>'; return; }
 
-    lista.innerHTML = filtrados.map(d => {
-      const total = d.indicadores.length;
-      const atingidos = d.indicadores.filter(i => i.atingido).length;
-      const pendentes = d.indicadores.filter(i => !i.atingido).map(i => i.indicador);
-      return `
-        <div class="resumo-gestante">
-          <div class="nome">${d.gestante.NOME} (${d.gestante.ID_GESTANTE})</div>
-          <div class="contagem">ACS: ${d._acs} — ${atingidos}/${total} indicadores OK</div>
-          ${pendentes.length ? `<div style="font-size:0.78rem; color:#8a1c1c; margin-top:4px;">Pendente: ${pendentes.join(', ')}</div>` : '<div style="font-size:0.78rem; color:#1e5c1c; margin-top:4px;">Tudo em dia</div>'}
-        </div>
-      `;
-    }).join('');
+    lista.innerHTML = `
+      <div class="cabecalho-print">Relatório geral${filtroValor ? ' — ACS: ' + filtroValor : ''} — gerado em ${formatarDataBR(new Date().toISOString())} — ESF Flor do Cerrado</div>
+      ${filtrados.map(d => {
+        const total = d.indicadores.length;
+        const atingidos = d.indicadores.filter(i => i.atingido).length;
+        const pendentes = d.indicadores.filter(i => !i.atingido).map(i => i.indicador);
+        return `
+          <div class="resumo-gestante">
+            <div class="nome">${d.gestante.NOME} (${d.gestante.ID_GESTANTE})</div>
+            <div class="contagem">ACS: ${d._acs} — ${atingidos}/${total} indicadores OK</div>
+            ${pendentes.length ? `<div style="font-size:0.78rem; color:#8a1c1c; margin-top:4px;">Pendente: ${pendentes.join(', ')}</div>` : '<div style="font-size:0.78rem; color:#1e5c1c; margin-top:4px;">Tudo em dia</div>'}
+          </div>
+        `;
+      }).join('')}
+      <button class="btn-pdf" onclick="window.print()">Baixar / Imprimir PDF</button>
+    `;
   }
 </script>
 
