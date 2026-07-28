@@ -21,9 +21,9 @@
   button { width: 100%; background: var(--verde-escuro); color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 600; margin-top: 16px; }
   button.secundario { background: #6b7d78; }
   button:active { opacity: 0.85; }
-  #msg, #msgAt { margin-top: 14px; padding: 10px; border-radius: 6px; font-size: 0.9rem; display: none; }
-  #msg.ok, #msgAt.ok { background: #e3f3e1; color: #1e5c1c; display: block; }
-  #msg.erro, #msgAt.erro { background: #fbe3e3; color: #8a1c1c; display: block; }
+  #msg, #msgAt, #msgDtpa { margin-top: 14px; padding: 10px; border-radius: 6px; font-size: 0.9rem; display: none; }
+  #msg.ok, #msgAt.ok, #msgDtpa.ok { background: #e3f3e1; color: #1e5c1c; display: block; }
+  #msg.erro, #msgAt.erro, #msgDtpa.erro { background: #fbe3e3; color: #8a1c1c; display: block; }
   .resultado-item { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; cursor: pointer; }
   .resultado-item:active { background: #f0f0f0; }
   .resultado-item b { color: var(--verde-escuro); }
@@ -47,6 +47,7 @@
 <nav>
   <a href="index.html">Cadastro</a>
   <a href="atendimento.html" class="ativo">Atendimento</a>
+  <a href="relatorios.html">Relatórios</a>
 </nav>
 
 <div class="container">
@@ -62,6 +63,12 @@
   <div class="card" id="painelGestante">
     <div id="fichaGestante"></div>
     <div id="historico"></div>
+    <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
+      <label>Registrar vacina DTPA</label>
+      <input type="date" id="DATA_DTPA">
+      <button id="btnDtpa" class="secundario" type="button">Registrar DTPA</button>
+      <div id="msgDtpa"></div>
+    </div>
   </div>
 
   <div class="card" id="painelForm" style="display:none;">
@@ -72,8 +79,9 @@
         <option>Médica</option>
         <option>Enfermeira</option>
         <option>Odonto</option>
-        <option>ACS</option>
-        <option>Puerpério</option>
+        <option>ACS - Gestação</option>
+        <option>ACS - Puerpério</option>
+        <option>Puerpério (1ª consulta)</option>
       </select>
 
       <label>Data agendada</label>
@@ -206,6 +214,33 @@
       })
       .catch(() => { historico.innerHTML = '<div class="ficha-linha">Erro ao carregar histórico.</div>'; });
   }
+
+  document.getElementById('btnDtpa').addEventListener('click', function () {
+    if (!gestanteAtual) return;
+    const msgDtpa = document.getElementById('msgDtpa');
+    const data = document.getElementById('DATA_DTPA').value;
+    if (!data) { msgDtpa.textContent = 'Informe a data.'; msgDtpa.className = 'erro'; return; }
+
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'vacina_cadastrar', key: ACCESS_KEY,
+        dados: { ID_GESTANTE: gestanteAtual.ID_GESTANTE, VACINA: 'DTPA', DATA_APLICADA: data }
+      })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.sucesso) {
+          msgDtpa.textContent = 'Vacina DTPA registrada!';
+          msgDtpa.className = 'ok';
+          document.getElementById('DATA_DTPA').value = '';
+        } else {
+          msgDtpa.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
+          msgDtpa.className = 'erro';
+        }
+      })
+      .catch(() => { msgDtpa.textContent = 'Erro de conexão.'; msgDtpa.className = 'erro'; });
+  });
 
   document.getElementById('formAtendimento').addEventListener('submit', function (e) {
     e.preventDefault();

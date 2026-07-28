@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatórios - ESF Flor do Cerrado</title>
+<style>
+  :root { --verde-escuro: #0F4B3D; --verde-claro: #B7D34A; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f4; margin: 0; padding: 0 0 40px 0; color: #222; }
+  header { background: var(--verde-escuro); color: #fff; padding: 16px; text-align: center; }
+  header h1 { margin: 0; font-size: 1.15rem; }
+  header p { margin: 4px 0 0; font-size: 0.82rem; opacity: 0.85; }
+  nav { display: flex; justify-content: center; gap: 10px; padding: 8px; background: #0c3b30; flex-wrap: wrap; }
+  nav a { color: #fff; font-size: 0.8rem; text-decoration: none; opacity: 0.85; }
+  nav a.ativo { opacity: 1; font-weight: 700; text-decoration: underline; }
+  .container { max-width: 520px; margin: 0 auto; padding: 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; color: var(--verde-escuro); }
+  input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+  button { width: 100%; background: var(--verde-escuro); color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; margin-top: 12px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tab-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--verde-escuro); background: #fff; color: var(--verde-escuro); font-weight: 600; font-size: 0.85rem; }
+  .tab-btn.ativo { background: var(--verde-escuro); color: #fff; }
+  .resultado-item { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; cursor: pointer; }
+  .resultado-item:active { background: #f0f0f0; }
+  .ind-linha { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+  .ind-nome { flex: 1; padding-right: 8px; }
+  .ind-status { font-size: 0.78rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
+  .ok { background: #e3f3e1; color: #1e5c1c; }
+  .pendente { background: #fbe3e3; color: #8a1c1c; }
+  .cron-linha { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+  .cron-badge.compareceu { background: #e3f3e1; color: #1e5c1c; }
+  .cron-badge.faltou { background: #fbe3e3; color: #8a1c1c; }
+  .cron-badge.reagendado, .cron-badge.remarcou { background: #e0eefb; color: #1c4c8a; }
+  .cron-badge.agendado { background: #fff6da; color: #8a6d1c; }
+  .cron-badge.sugerida { background: #eee; color: #666; font-style: italic; }
+  .cron-badge { font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
+  .resumo-gestante { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; }
+  .resumo-gestante .nome { font-weight: 700; color: var(--verde-escuro); }
+  .resumo-gestante .contagem { font-size: 0.85rem; }
+  select#filtroACS { margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Relatórios</h1>
+  <p>ESF Flor do Cerrado</p>
+</header>
+<nav>
+  <a href="index.html">Cadastro</a>
+  <a href="atendimento.html">Atendimento</a>
+  <a href="relatorios.html" class="ativo">Relatórios</a>
+</nav>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn ativo" id="btnAbaGestante">Por gestante</button>
+    <button class="tab-btn" id="btnAbaGeral">Geral / por ACS</button>
+  </div>
+
+  <!-- ABA POR GESTANTE -->
+  <div id="abaGestante">
+    <div class="card">
+      <label>Buscar gestante (nome ou ID)</label>
+      <input type="text" id="busca" placeholder="Digite o nome ou G-0001">
+      <button id="btnBuscar">Buscar</button>
+      <div id="resultados"></div>
+    </div>
+    <div class="card" id="painelIndicadores" style="display:none;"></div>
+  </div>
+
+  <!-- ABA GERAL / POR ACS -->
+  <div id="abaGeral" style="display:none;">
+    <div class="card">
+      <label>Filtrar por ACS</label>
+      <select id="filtroACS"><option value="">Todas</option></select>
+      <div id="listaGeral">Carregando...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzIL2l8UVyyzdeKfYxBGnabxZMLPYPESn5_cpkpjJdAopERf4nKsjlcUcmVIG0iIVu9zw/exec';
+  const ACCESS_KEY = 'FC_GEST2026';
+
+  function formatarDataBR(iso) {
+    if (!iso) return '-';
+    const partes = String(iso).split('T')[0].split('-');
+    if (partes.length !== 3) return iso;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
+  function cronBadgeClasse(status) {
+    return (status || 'sugerida').toLowerCase();
+  }
+
+  // --------- Alternância de abas ---------
+  document.getElementById('btnAbaGestante').addEventListener('click', () => alternarAba('gestante'));
+  document.getElementById('btnAbaGeral').addEventListener('click', () => alternarAba('geral'));
+
+  function alternarAba(qual) {
+    document.getElementById('abaGestante').style.display = qual === 'gestante' ? 'block' : 'none';
+    document.getElementById('abaGeral').style.display = qual === 'geral' ? 'block' : 'none';
+    document.getElementById('btnAbaGestante').className = 'tab-btn' + (qual === 'gestante' ? ' ativo' : '');
+    document.getElementById('btnAbaGeral').className = 'tab-btn' + (qual === 'geral' ? ' ativo' : '');
+    if (qual === 'geral') carregarGeral();
+  }
+
+  // --------- Aba por gestante ---------
+  document.getElementById('btnBuscar').addEventListener('click', function () {
+    const termo = document.getElementById('busca').value.trim().toLowerCase();
+    const resultados = document.getElementById('resultados');
+    resultados.innerHTML = '';
+    if (!termo) return;
+
+    fetch(`${API_URL}?action=listar&key=${ACCESS_KEY}`)
+      .then(r => r.json())
+      .then(lista => {
+        const achados = lista.filter(g =>
+          (g.NOME || '').toLowerCase().includes(termo) || (g.ID_GESTANTE || '').toLowerCase().includes(termo)
+        );
+        achados.forEach(g => {
+          const div = document.createElement('div');
+          div.className = 'resultado-item';
+          div.innerHTML = `<b>${g.NOME}</b><br>${g.ID_GESTANTE} — IG: ${g.IG_ATUAL_SEMANAS ?? '-'} semanas`;
+          div.addEventListener('click', () => mostrarIndicadores(g.ID_GESTANTE));
+          resultados.appendChild(div);
+        });
+      });
+  });
+
+  function mostrarIndicadores(idGestante) {
+    const painel = document.getElementById('painelIndicadores');
+    painel.style.display = 'block';
+    painel.innerHTML = 'Carregando...';
+    document.getElementById('resultados').innerHTML = '';
+
+    Promise.all([
+      fetch(`${API_URL}?action=indicadores&idGestante=${idGestante}&key=${ACCESS_KEY}`).then(r => r.json()),
+      fetch(`${API_URL}?action=cronograma&idGestante=${idGestante}&key=${ACCESS_KEY}`).then(r => r.json())
+    ]).then(([res, cron]) => {
+        if (res.erro) { painel.innerHTML = 'Erro: ' + res.erro; return; }
+        const total = res.indicadores.length;
+        const atingidos = res.indicadores.filter(i => i.atingido).length;
+
+        const htmlCronograma = (cron && cron.consultas) ? `
+          <div style="font-weight:700; color:var(--verde-escuro); margin:16px 0 6px;">Consultas de pré-natal (mínimo 7)</div>
+          ${cron.consultas.map(c => `
+            <div class="cron-linha">
+              <div>Consulta ${c.numero} — ${formatarDataBR(c.data)} — ${c.profissional}</div>
+              <div class="cron-badge ${cronBadgeClasse(c.status)}">${c.status}</div>
+            </div>
+          `).join('')}
+          <div style="font-size:0.75rem; color:#888; margin-top:6px;">"Sugerida" = data ainda não realizada, projetada em quarta-feira conforme a regra de idade gestacional.</div>
+        ` : '';
+
+        painel.innerHTML = `
+          <div style="font-weight:700; color:var(--verde-escuro); margin-bottom:6px;">
+            ${res.gestante.NOME} (${res.gestante.ID_GESTANTE}) — ${atingidos}/${total} indicadores atingidos
+          </div>
+          ${res.indicadores.map(i => `
+            <div class="ind-linha">
+              <div class="ind-nome">${i.indicador}<br><span style="color:#888;">meta: ${i.meta} — atual: ${i.atual}</span></div>
+              <div class="ind-status ${i.atingido ? 'ok' : 'pendente'}">${i.atingido ? 'OK' : 'Pendente'}</div>
+            </div>
+          `).join('')}
+          ${htmlCronograma}
+        `;
+      });
+  }
+
+  // --------- Aba geral / por ACS ---------
+  let dadosGeral = [];
+
+  function carregarGeral() {
+    const lista = document.getElementById('listaGeral');
+    lista.innerHTML = 'Carregando...';
+    fetch(`${API_URL}?action=indicadores_todos&key=${ACCESS_KEY}`)
+      .then(r => r.json())
+      .then(async res => {
+        dadosGeral = res;
+        // pega ACS de cada gestante pra montar o filtro
+        const gestantes = await fetch(`${API_URL}?action=listar&key=${ACCESS_KEY}`).then(r => r.json());
+        const mapaACS = {};
+        gestantes.forEach(g => { mapaACS[g.ID_GESTANTE] = g.AGENTE_SAUDE || 'Sem ACS'; });
+        dadosGeral.forEach(d => { d._acs = mapaACS[d.gestante.ID_GESTANTE]; });
+
+        const filtro = document.getElementById('filtroACS');
+        const acsUnicas = [...new Set(dadosGeral.map(d => d._acs))].sort();
+        filtro.innerHTML = '<option value="">Todas</option>' + acsUnicas.map(a => `<option value="${a}">${a}</option>`).join('');
+        filtro.onchange = renderizarGeral;
+
+        renderizarGeral();
+      })
+      .catch(() => { lista.innerHTML = 'Erro ao carregar relatório geral.'; });
+  }
+
+  function renderizarGeral() {
+    const filtroValor = document.getElementById('filtroACS').value;
+    const lista = document.getElementById('listaGeral');
+    const filtrados = filtroValor ? dadosGeral.filter(d => d._acs === filtroValor) : dadosGeral;
+
+    if (!filtrados.length) { lista.innerHTML = '<div>Nenhuma gestante encontrada.</div>'; return; }
+
+    lista.innerHTML = filtrados.map(d => {
+      const total = d.indicadores.length;
+      const atingidos = d.indicadores.filter(i => i.atingido).length;
+      const pendentes = d.indicadores.filter(i => !i.atingido).map(i => i.indicador);
+      return `
+        <div class="resumo-gestante">
+          <div class="nome">${d.gestante.NOME} (${d.gestante.ID_GESTANTE})</div>
+          <div class="contagem">ACS: ${d._acs} — ${atingidos}/${total} indicadores OK</div>
+          ${pendentes.length ? `<div style="font-size:0.78rem; color:#8a1c1c; margin-top:4px;">Pendente: ${pendentes.join(', ')}</div>` : '<div style="font-size:0.78rem; color:#1e5c1c; margin-top:4px;">Tudo em dia</div>'}
+        </div>
+      `;
+    }).join('');
+  }
+</script>
+
+</body>
+</html>
