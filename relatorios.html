@@ -44,7 +44,7 @@
   .cabecalho-print { display: none; }
 
   @media print {
-    nav, .tabs, #busca, #btnBuscar, #resultados, .btn-pdf, #filtroACS { display: none !important; }
+    nav, .tabs, #cardBusca, .btn-pdf, #filtroACS, #labelFiltroACS { display: none !important; }
     body { background: #fff; padding: 0; }
     header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .card { box-shadow: none; border: 1px solid #ccc; }
@@ -72,7 +72,7 @@
 
   <!-- ABA POR GESTANTE -->
   <div id="abaGestante">
-    <div class="card">
+    <div class="card" id="cardBusca">
       <label>Buscar gestante (nome ou ID)</label>
       <input type="text" id="busca" placeholder="Digite o nome ou G-0001">
       <button id="btnBuscar">Buscar</button>
@@ -84,7 +84,7 @@
   <!-- ABA GERAL / POR ACS -->
   <div id="abaGeral" style="display:none;">
     <div class="card">
-      <label>Filtrar por ACS</label>
+      <label id="labelFiltroACS">Filtrar por ACS</label>
       <select id="filtroACS"><option value="">Todas</option></select>
       <div id="listaGeral">Carregando...</div>
     </div>
