@@ -21,9 +21,9 @@
   button { width: 100%; background: var(--verde-escuro); color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 600; margin-top: 16px; }
   button.secundario { background: #6b7d78; }
   button:active { opacity: 0.85; }
-  #msg, #msgAt, #msgDtpa { margin-top: 14px; padding: 10px; border-radius: 6px; font-size: 0.9rem; display: none; }
-  #msg.ok, #msgAt.ok, #msgDtpa.ok { background: #e3f3e1; color: #1e5c1c; display: block; }
-  #msg.erro, #msgAt.erro, #msgDtpa.erro { background: #fbe3e3; color: #8a1c1c; display: block; }
+  #msg, #msgAt, #msgDtpa, #msgExame { margin-top: 14px; padding: 10px; border-radius: 6px; font-size: 0.9rem; display: none; }
+  #msg.ok, #msgAt.ok, #msgDtpa.ok, #msgExame.ok { background: #e3f3e1; color: #1e5c1c; display: block; }
+  #msg.erro, #msgAt.erro, #msgDtpa.erro, #msgExame.erro { background: #fbe3e3; color: #8a1c1c; display: block; }
   .resultado-item { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; cursor: pointer; }
   .resultado-item:active { background: #f0f0f0; }
   .resultado-item b { color: var(--verde-escuro); }
@@ -63,6 +63,18 @@
   <div class="card" id="painelGestante">
     <div id="fichaGestante"></div>
     <div id="historico"></div>
+    <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
+      <label>Registrar exame</label>
+      <select id="TRIMESTRE_EXAME"><option value="">Selecione o trimestre...</option></select>
+      <select id="EXAME" style="margin-top:8px;"><option value="">Selecione o exame...</option></select>
+      <label>Data solicitado</label>
+      <input type="date" id="DATA_SOLICITADO">
+      <label>Data realizado</label>
+      <input type="date" id="DATA_REALIZADO">
+      <button id="btnExame" class="secundario" type="button">Registrar exame</button>
+      <div id="msgExame"></div>
+      <div id="historicoExames" style="margin-top:10px;"></div>
+    </div>
     <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
       <label>Registrar vacina DTPA</label>
       <input type="date" id="DATA_DTPA">
@@ -192,6 +204,7 @@
     `;
 
     carregarHistorico(g.ID_GESTANTE);
+    carregarHistoricoExames(g.ID_GESTANTE);
   }
 
   function carregarHistorico(idGestante) {
@@ -214,6 +227,78 @@
       })
       .catch(() => { historico.innerHTML = '<div class="ficha-linha">Erro ao carregar histórico.</div>'; });
   }
+
+  let examesPadrao = []; // [{TRIMESTRE, EXAME}]
+
+  fetch(`${API_URL}?action=exames_padrao&key=${ACCESS_KEY}`)
+    .then(r => r.json())
+    .then(lista => {
+      examesPadrao = lista;
+      const selTrimestre = document.getElementById('TRIMESTRE_EXAME');
+      [1, 2, 3].forEach(t => selTrimestre.innerHTML += `<option value="${t}">${t}º trimestre</option>`);
+    })
+    .catch(() => {});
+
+  document.getElementById('TRIMESTRE_EXAME').addEventListener('change', function () {
+    const selExame = document.getElementById('EXAME');
+    const trimestre = this.value;
+    selExame.innerHTML = '<option value="">Selecione o exame...</option>';
+    examesPadrao.filter(ex => String(ex.TRIMESTRE) === trimestre)
+      .forEach(ex => { selExame.innerHTML += `<option value="${ex.EXAME}">${ex.EXAME}</option>`; });
+  });
+
+  function carregarHistoricoExames(idGestante) {
+    const div = document.getElementById('historicoExames');
+    fetch(`${API_URL}?action=exames_listar&idGestante=${idGestante}&key=${ACCESS_KEY}`)
+      .then(r => r.json())
+      .then(lista => {
+        if (!lista.length) { div.innerHTML = '<div class="ficha-linha">Nenhum exame registrado ainda.</div>'; return; }
+        div.innerHTML = '<div class="ficha-linha"><b>Exames registrados</b></div>' +
+          lista.map(ex => `
+            <div class="hist-item">
+              ${ex.TRIMESTRE}º tri — ${ex.EXAME}<br>
+              <span style="color:#888;">solicitado: ${formatarDataBR(ex.DATA_SOLICITADO)} — realizado: ${formatarDataBR(ex.DATA_REALIZADO)}</span>
+            </div>
+          `).join('');
+      })
+      .catch(() => { div.innerHTML = 'Erro ao carregar exames.'; });
+  }
+
+  document.getElementById('btnExame').addEventListener('click', function () {
+    if (!gestanteAtual) return;
+    const msgExame = document.getElementById('msgExame');
+    const trimestre = document.getElementById('TRIMESTRE_EXAME').value;
+    const exame = document.getElementById('EXAME').value;
+    if (!trimestre || !exame) { msgExame.textContent = 'Selecione trimestre e exame.'; msgExame.className = 'erro'; return; }
+
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'exame_cadastrar', key: ACCESS_KEY,
+        dados: {
+          ID_GESTANTE: gestanteAtual.ID_GESTANTE,
+          TRIMESTRE: trimestre,
+          EXAME: exame,
+          DATA_SOLICITADO: document.getElementById('DATA_SOLICITADO').value,
+          DATA_REALIZADO: document.getElementById('DATA_REALIZADO').value
+        }
+      })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.sucesso) {
+          msgExame.textContent = 'Exame registrado! ID: ' + res.id;
+          msgExame.className = 'ok';
+          document.getElementById('DATA_SOLICITADO').value = '';
+          document.getElementById('DATA_REALIZADO').value = '';
+          carregarHistoricoExames(gestanteAtual.ID_GESTANTE);
+        } else {
+          msgExame.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
+          msgExame.className = 'erro';
+        }
+      })
+      .catch(() => { msgExame.textContent = 'Erro de conexão.'; msgExame.className = 'erro'; });
+  });
 
   document.getElementById('btnDtpa').addEventListener('click', function () {
     if (!gestanteAtual) return;
