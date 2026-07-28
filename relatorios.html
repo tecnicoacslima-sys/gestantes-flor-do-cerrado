@@ -44,10 +44,12 @@
   .cabecalho-print { display: none; }
 
   @media print {
+    @page { margin: 1cm; }
     nav, .tabs, #cardBusca, .btn-pdf, #filtroACS, #labelFiltroACS { display: none !important; }
     body { background: #fff; padding: 0; }
     header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .card { box-shadow: none; border: 1px solid #ccc; }
+    .container { max-width: 100%; padding: 0; }
+    .card { box-shadow: none; border: 1px solid #ccc; padding: 10px; }
     .cabecalho-print { display: block; font-size: 0.8rem; color: #555; margin-bottom: 10px; }
   }
 </style>
