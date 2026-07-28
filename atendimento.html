@@ -118,6 +118,14 @@
 
   let gestanteAtual = null;
 
+  // Converte AAAA-MM-DD (ou vazio) para DD/MM/AAAA, só para exibição
+  function formatarDataBR(iso) {
+    if (!iso) return '-';
+    const partes = String(iso).split('T')[0].split('-');
+    if (partes.length !== 3) return iso;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
   function badgeClasse(status) {
     const s = (status || '').toLowerCase();
     if (s === 'compareceu') return 'compareceu';
@@ -170,8 +178,8 @@
     document.getElementById('fichaGestante').innerHTML = `
       <div class="ficha-linha"><b>${g.NOME}</b> (${g.ID_GESTANTE})</div>
       <div class="ficha-linha">IG atual: <b>${g.IG_ATUAL_SEMANAS ?? '-'}</b> semanas</div>
-      <div class="ficha-linha">DPP: <b>${g.DPP || '-'}</b></div>
-      <div class="ficha-linha">Próxima consulta sugerida: <b>${g.PROXIMA_CONSULTA_SUGERIDA || '-'}</b></div>
+      <div class="ficha-linha">DPP: <b>${formatarDataBR(g.DPP)}</b></div>
+      <div class="ficha-linha">Próxima consulta sugerida: <b>${formatarDataBR(g.PROXIMA_CONSULTA_SUGERIDA)}</b></div>
       <div class="ficha-linha">ACS: <b>${g.AGENTE_SAUDE || '-'}</b> (microárea ${g.MICROAREA || '-'})</div>
     `;
 
@@ -191,7 +199,7 @@
         historico.innerHTML = '<div class="ficha-linha" style="margin-top:10px;"><b>Histórico</b></div>' +
           lista.map(a => `
             <div class="hist-item">
-              ${a.TIPO} — ${a.DATA_AGENDADA || '-'}
+              ${a.TIPO} — ${formatarDataBR(a.DATA_AGENDADA)}
               <span class="badge ${badgeClasse(a.STATUS)}">${a.STATUS || 'Agendado'}</span>
             </div>
           `).join('');

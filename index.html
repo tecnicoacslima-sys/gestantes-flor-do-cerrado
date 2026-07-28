@@ -98,10 +98,12 @@
       <input type="date" id="DATA_NASCIMENTO">
 
       <label>Microárea</label>
-      <input type="text" id="MICROAREA">
+      <input type="text" id="MICROAREA" list="listaMicroareas" autocomplete="off">
+      <datalist id="listaMicroareas"></datalist>
 
       <label>Agente de saúde responsável</label>
-      <input type="text" id="AGENTE_SAUDE">
+      <input type="text" id="AGENTE_SAUDE" list="listaACS" autocomplete="off">
+      <datalist id="listaACS"></datalist>
 
       <label>Contato (telefone)</label>
       <input type="tel" id="CONTATO" placeholder="(65) 9xxxx-xxxx">
@@ -133,6 +135,35 @@
 <script>
   const API_URL = 'https://script.google.com/macros/s/AKfycbzIL2l8UVyyzdeKfYxBGnabxZMLPYPESn5_cpkpjJdAopERf4nKsjlcUcmVIG0iIVu9zw/exec';
   const ACCESS_KEY = 'FC_GEST2026'; // igual ao Code.gs
+
+  let listaACS = []; // [{MICROAREA, AGENTE_SAUDE}]
+
+  // Carrega a relação ACS/microárea uma vez, ao abrir a página
+  fetch(`${API_URL}?action=acs_lista&key=${ACCESS_KEY}`)
+    .then(r => r.json())
+    .then(lista => {
+      listaACS = lista;
+      const dlMicro = document.getElementById('listaMicroareas');
+      const dlACS = document.getElementById('listaACS');
+      const microareasUnicas = [...new Set(lista.map(r => String(r.MICROAREA)))];
+      microareasUnicas.forEach(m => dlMicro.innerHTML += `<option value="${m}">`);
+      lista.forEach(r => dlACS.innerHTML += `<option value="${r.AGENTE_SAUDE}">`);
+    })
+    .catch(() => {}); // se falhar, o usuário ainda digita manualmente
+
+  // Ao preencher a microárea, tenta achar a ACS correspondente
+  document.getElementById('MICROAREA').addEventListener('change', function () {
+    const valor = this.value.trim();
+    const achou = listaACS.find(r => String(r.MICROAREA).trim() === valor);
+    if (achou) document.getElementById('AGENTE_SAUDE').value = achou.AGENTE_SAUDE;
+  });
+
+  // Ao preencher a ACS, tenta achar a microárea correspondente
+  document.getElementById('AGENTE_SAUDE').addEventListener('change', function () {
+    const valor = this.value.trim().toUpperCase();
+    const achou = listaACS.find(r => String(r.AGENTE_SAUDE).trim().toUpperCase() === valor);
+    if (achou) document.getElementById('MICROAREA').value = achou.MICROAREA;
+  });
 
   document.getElementById('formCadastro').addEventListener('submit', function (e) {
     e.preventDefault();
