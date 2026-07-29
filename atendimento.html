@@ -35,6 +35,12 @@
   .badge.agendado { background: #fff6da; color: #8a6d1c; }
   .badge.reagendado { background: #e0eefb; color: #1c4c8a; }
   .hist-item { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 0.85rem; }
+  .check-exame { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+  .check-exame input[type="checkbox"] { width: auto; }
+  .check-exame.ja-registrado { color: #999; }
+  .check-exame .tag-registrado { font-size: 0.72rem; color: #1e5c1c; margin-left: 4px; }
+  #selecionarTodos { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 6px 0; }
+  #selecionarTodos input { width: auto; }
   #painelGestante { display: none; }
 </style>
 </head>
@@ -64,14 +70,14 @@
     <div id="fichaGestante"></div>
     <div id="historico"></div>
     <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
-      <label>Registrar exame</label>
+      <label>Registrar exames</label>
       <select id="TRIMESTRE_EXAME"><option value="">Selecione o trimestre...</option></select>
-      <select id="EXAME" style="margin-top:8px;"><option value="">Selecione o exame...</option></select>
-      <label>Data solicitado</label>
+      <div id="listaCheckExames" style="margin-top:8px;"></div>
+      <label>Data de solicitação (emissão)</label>
       <input type="date" id="DATA_SOLICITADO">
-      <label>Data realizado</label>
+      <label>Data de realização (coleta)</label>
       <input type="date" id="DATA_REALIZADO">
-      <button id="btnExame" class="secundario" type="button">Registrar exame</button>
+      <button id="btnExame" class="secundario" type="button">Registrar exames selecionados</button>
       <div id="msgExame"></div>
       <div id="historicoExames" style="margin-top:10px;"></div>
     </div>
@@ -229,6 +235,7 @@
   }
 
   let examesPadrao = []; // [{TRIMESTRE, EXAME}]
+  let examesJaRegistrados = []; // nomes de exames já registrados no trimestre atual, para essa gestante
 
   fetch(`${API_URL}?action=exames_padrao&key=${ACCESS_KEY}`)
     .then(r => r.json())
@@ -239,12 +246,34 @@
     })
     .catch(() => {});
 
-  document.getElementById('TRIMESTRE_EXAME').addEventListener('change', function () {
-    const selExame = document.getElementById('EXAME');
+  document.getElementById('TRIMESTRE_EXAME').addEventListener('change', async function () {
     const trimestre = this.value;
-    selExame.innerHTML = '<option value="">Selecione o exame...</option>';
-    examesPadrao.filter(ex => String(ex.TRIMESTRE) === trimestre)
-      .forEach(ex => { selExame.innerHTML += `<option value="${ex.EXAME}">${ex.EXAME}</option>`; });
+    const container = document.getElementById('listaCheckExames');
+    container.innerHTML = '';
+    if (!trimestre || !gestanteAtual) return;
+
+    // busca o que já foi registrado nesse trimestre, pra não deixar marcar de novo
+    const todos = await fetch(`${API_URL}?action=exames_listar&idGestante=${gestanteAtual.ID_GESTANTE}&key=${ACCESS_KEY}`).then(r => r.json());
+    examesJaRegistrados = todos.filter(ex => String(ex.TRIMESTRE) === trimestre).map(ex => ex.EXAME);
+
+    const exames = examesPadrao.filter(ex => String(ex.TRIMESTRE) === trimestre);
+
+    container.innerHTML = `
+      <label id="selecionarTodos"><input type="checkbox" id="checkTodos"> Selecionar todos</label>
+      ${exames.map((ex, i) => {
+        const jaTem = examesJaRegistrados.indexOf(ex.EXAME) !== -1;
+        return `
+          <label class="check-exame ${jaTem ? 'ja-registrado' : ''}">
+            <input type="checkbox" class="check-exame-item" value="${ex.EXAME}" ${jaTem ? 'disabled' : ''}>
+            ${ex.EXAME} ${jaTem ? '<span class="tag-registrado">(já registrado)</span>' : ''}
+          </label>
+        `;
+      }).join('')}
+    `;
+
+    document.getElementById('checkTodos').addEventListener('change', function () {
+      document.querySelectorAll('.check-exame-item:not(:disabled)').forEach(cb => { cb.checked = this.checked; });
+    });
   });
 
   function carregarHistoricoExames(idGestante) {
@@ -268,17 +297,22 @@
     if (!gestanteAtual) return;
     const msgExame = document.getElementById('msgExame');
     const trimestre = document.getElementById('TRIMESTRE_EXAME').value;
-    const exame = document.getElementById('EXAME').value;
-    if (!trimestre || !exame) { msgExame.textContent = 'Selecione trimestre e exame.'; msgExame.className = 'erro'; return; }
+    const selecionados = Array.from(document.querySelectorAll('.check-exame-item:checked')).map(cb => cb.value);
+
+    if (!trimestre || !selecionados.length) {
+      msgExame.textContent = 'Selecione o trimestre e ao menos um exame.';
+      msgExame.className = 'erro';
+      return;
+    }
 
     fetch(API_URL, {
       method: 'POST',
       body: JSON.stringify({
-        action: 'exame_cadastrar', key: ACCESS_KEY,
+        action: 'exames_cadastrar_lote', key: ACCESS_KEY,
         dados: {
           ID_GESTANTE: gestanteAtual.ID_GESTANTE,
           TRIMESTRE: trimestre,
-          EXAME: exame,
+          EXAMES: selecionados,
           DATA_SOLICITADO: document.getElementById('DATA_SOLICITADO').value,
           DATA_REALIZADO: document.getElementById('DATA_REALIZADO').value
         }
@@ -287,10 +321,11 @@
       .then(r => r.json())
       .then(res => {
         if (res.sucesso) {
-          msgExame.textContent = 'Exame registrado! ID: ' + res.id;
+          msgExame.textContent = `${res.total} exame(s) registrado(s)!`;
           msgExame.className = 'ok';
           document.getElementById('DATA_SOLICITADO').value = '';
           document.getElementById('DATA_REALIZADO').value = '';
+          document.getElementById('TRIMESTRE_EXAME').dispatchEvent(new Event('change'));
           carregarHistoricoExames(gestanteAtual.ID_GESTANTE);
         } else {
           msgExame.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
