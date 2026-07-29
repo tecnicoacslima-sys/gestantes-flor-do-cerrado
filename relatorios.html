@@ -39,13 +39,21 @@
   .resumo-gestante { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; }
   .resumo-gestante .nome { font-weight: 700; color: var(--verde-escuro); }
   .resumo-gestante .contagem { font-size: 0.85rem; }
+  .linha-trimestre { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; font-size: 0.85rem; }
+  .linha-trimestre .nome { font-weight: 700; color: var(--verde-escuro); }
+  .linha-trimestre .dados { color: #555; margin-top: 2px; }
+  .linha-trimestre .meta-restante { font-weight: 700; }
+  .linha-trimestre .meta-restante.zerado { color: #1e5c1c; }
+  .linha-trimestre .meta-restante.pendente { color: #8a1c1c; }
+  .linha-falta { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; font-size: 0.85rem; }
+  .linha-falta .nome { font-weight: 700; color: #8a1c1c; }
   select#filtroACS { margin-bottom: 10px; }
   .btn-pdf { background: #6b7d78; margin-top: 10px; }
   .cabecalho-print { display: none; }
 
   @media print {
     @page { margin: 1cm; }
-    nav, .tabs, #cardBusca, .btn-pdf, #filtroACS, #labelFiltroACS { display: none !important; }
+    nav, .tabs, #cardBusca, .btn-pdf, #filtroACS, #labelFiltroACS, #filtroTrimestre, #filtroACSTrimestre, #filtroACSFaltas, .card label { display: none !important; }
     body { background: #fff; padding: 0; }
     header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .container { max-width: 100%; padding: 0; }
@@ -67,8 +75,10 @@
 </nav>
 
 <div class="container">
-  <div class="tabs">
+  <div class="tabs" style="flex-wrap: wrap;">
     <button class="tab-btn ativo" id="btnAbaGestante">Por gestante</button>
+    <button class="tab-btn" id="btnAbaTrimestre">Por trimestre</button>
+    <button class="tab-btn" id="btnAbaFaltas">Faltas (busca ativa)</button>
     <button class="tab-btn" id="btnAbaGeral">Geral / por ACS</button>
   </div>
 
@@ -81,6 +91,31 @@
       <div id="resultados"></div>
     </div>
     <div class="card" id="painelIndicadores" style="display:none;"></div>
+  </div>
+
+  <!-- ABA POR TRIMESTRE -->
+  <div id="abaTrimestre" style="display:none;">
+    <div class="card">
+      <label>Trimestre</label>
+      <select id="filtroTrimestre">
+        <option value="">Todos</option>
+        <option value="1">1º trimestre</option>
+        <option value="2">2º trimestre</option>
+        <option value="3">3º trimestre</option>
+      </select>
+      <label>Filtrar por ACS</label>
+      <select id="filtroACSTrimestre"><option value="">Todas</option></select>
+      <div id="listaTrimestre">Carregando...</div>
+    </div>
+  </div>
+
+  <!-- ABA FALTAS / BUSCA ATIVA -->
+  <div id="abaFaltas" style="display:none;">
+    <div class="card">
+      <label>Filtrar por ACS</label>
+      <select id="filtroACSFaltas"><option value="">Todas</option></select>
+      <div id="listaFaltas">Carregando...</div>
+    </div>
   </div>
 
   <!-- ABA GERAL / POR ACS -->
@@ -110,13 +145,21 @@
 
   // --------- Alternância de abas ---------
   document.getElementById('btnAbaGestante').addEventListener('click', () => alternarAba('gestante'));
+  document.getElementById('btnAbaTrimestre').addEventListener('click', () => alternarAba('trimestre'));
+  document.getElementById('btnAbaFaltas').addEventListener('click', () => alternarAba('faltas'));
   document.getElementById('btnAbaGeral').addEventListener('click', () => alternarAba('geral'));
 
   function alternarAba(qual) {
     document.getElementById('abaGestante').style.display = qual === 'gestante' ? 'block' : 'none';
+    document.getElementById('abaTrimestre').style.display = qual === 'trimestre' ? 'block' : 'none';
+    document.getElementById('abaFaltas').style.display = qual === 'faltas' ? 'block' : 'none';
     document.getElementById('abaGeral').style.display = qual === 'geral' ? 'block' : 'none';
     document.getElementById('btnAbaGestante').className = 'tab-btn' + (qual === 'gestante' ? ' ativo' : '');
+    document.getElementById('btnAbaTrimestre').className = 'tab-btn' + (qual === 'trimestre' ? ' ativo' : '');
+    document.getElementById('btnAbaFaltas').className = 'tab-btn' + (qual === 'faltas' ? ' ativo' : '');
     document.getElementById('btnAbaGeral').className = 'tab-btn' + (qual === 'geral' ? ' ativo' : '');
+    if (qual === 'trimestre') carregarPorTrimestre();
+    if (qual === 'faltas') carregarFaltas();
     if (qual === 'geral') carregarGeral();
   }
 
@@ -183,6 +226,138 @@
           <button class="btn-pdf" onclick="window.print()">Baixar / Imprimir PDF</button>
         `;
       });
+  }
+
+  // --------- Aba por trimestre ---------
+  let dadosTrimestre = []; // gestantes + consultas realizadas/faltam
+
+  function trimestreDaIG(ig) {
+    if (ig === null || ig === undefined) return null;
+    if (ig <= 13) return 1;
+    if (ig <= 27) return 2;
+    return 3;
+  }
+
+  async function carregarPorTrimestre() {
+    const lista = document.getElementById('listaTrimestre');
+    lista.innerHTML = 'Carregando...';
+
+    const [gestantes, indicadores] = await Promise.all([
+      fetch(`${API_URL}?action=listar&key=${ACCESS_KEY}`).then(r => r.json()),
+      fetch(`${API_URL}?action=indicadores_todos&key=${ACCESS_KEY}`).then(r => r.json())
+    ]);
+
+    const mapaConsultas = {};
+    indicadores.forEach(d => {
+      const ind = d.indicadores.find(i => i.indicador === 'Consultas de pré-natal');
+      mapaConsultas[d.gestante.ID_GESTANTE] = ind ? Number(ind.atual) : 0;
+    });
+
+    dadosTrimestre = gestantes.map(g => ({
+      ID_GESTANTE: g.ID_GESTANTE,
+      NOME: g.NOME,
+      ACS: g.AGENTE_SAUDE || 'Sem ACS',
+      IG: g.IG_ATUAL_SEMANAS,
+      DUM: g.DUM,
+      DPP: g.DPP,
+      trimestre: trimestreDaIG(g.IG_ATUAL_SEMANAS),
+      realizadas: mapaConsultas[g.ID_GESTANTE] || 0
+    }));
+
+    const filtro = document.getElementById('filtroACSTrimestre');
+    const acsUnicas = [...new Set(dadosTrimestre.map(d => d.ACS))].sort();
+    filtro.innerHTML = '<option value="">Todas</option>' + acsUnicas.map(a => `<option value="${a}">${a}</option>`).join('');
+    filtro.onchange = renderizarTrimestre;
+    document.getElementById('filtroTrimestre').onchange = renderizarTrimestre;
+
+    renderizarTrimestre();
+  }
+
+  function renderizarTrimestre() {
+    const trimestreValor = document.getElementById('filtroTrimestre').value;
+    const acsValor = document.getElementById('filtroACSTrimestre').value;
+    const lista = document.getElementById('listaTrimestre');
+
+    let filtrados = dadosTrimestre;
+    if (trimestreValor) filtrados = filtrados.filter(d => String(d.trimestre) === trimestreValor);
+    if (acsValor) filtrados = filtrados.filter(d => d.ACS === acsValor);
+
+    if (!filtrados.length) { lista.innerHTML = '<div>Nenhuma gestante encontrada.</div>'; return; }
+
+    lista.innerHTML = `
+      <div class="cabecalho-print">Relatório por trimestre${trimestreValor ? ' — ' + trimestreValor + 'º trimestre' : ''}${acsValor ? ' — ACS: ' + acsValor : ''} — gerado em ${formatarDataBR(new Date().toISOString())} — ESF Flor do Cerrado</div>
+      ${filtrados.map(d => {
+        const faltam = Math.max(0, 7 - d.realizadas);
+        return `
+          <div class="linha-trimestre">
+            <div class="nome">${d.NOME} (${d.ID_GESTANTE}) — ${d.trimestre ? d.trimestre + 'º trimestre' : 'sem IG'}</div>
+            <div class="dados">ACS: ${d.ACS} — IG: ${d.IG ?? '-'} semanas</div>
+            <div class="dados">DUM: ${formatarDataBR(d.DUM)} — DPP: ${formatarDataBR(d.DPP)}</div>
+            <div class="dados">Consultas realizadas: ${d.realizadas} de 7 —
+              <span class="meta-restante ${faltam === 0 ? 'zerado' : 'pendente'}">${faltam === 0 ? 'meta atingida' : faltam + ' faltando'}</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+      <button class="btn-pdf" onclick="window.print()">Baixar / Imprimir PDF</button>
+    `;
+  }
+
+  // --------- Aba faltas / busca ativa ---------
+  let dadosFaltas = [];
+
+  async function carregarFaltas() {
+    const lista = document.getElementById('listaFaltas');
+    lista.innerHTML = 'Carregando...';
+
+    const [gestantes, atendimentos] = await Promise.all([
+      fetch(`${API_URL}?action=listar&key=${ACCESS_KEY}`).then(r => r.json()),
+      fetch(`${API_URL}?action=atendimentos_listar&key=${ACCESS_KEY}`).then(r => r.json())
+    ]);
+
+    const mapaGestante = {};
+    gestantes.forEach(g => { mapaGestante[g.ID_GESTANTE] = g; });
+
+    dadosFaltas = atendimentos
+      .filter(a => a.STATUS === 'Faltou')
+      .map(a => {
+        const g = mapaGestante[a.ID_GESTANTE] || {};
+        return {
+          NOME: g.NOME || a.ID_GESTANTE,
+          ACS: g.AGENTE_SAUDE || 'Sem ACS',
+          CONTATO: g.CONTATO || '-',
+          TIPO: a.TIPO,
+          DATA: a.DATA_AGENDADA
+        };
+      })
+      .sort((x, y) => new Date(y.DATA) - new Date(x.DATA));
+
+    const filtro = document.getElementById('filtroACSFaltas');
+    const acsUnicas = [...new Set(dadosFaltas.map(d => d.ACS))].sort();
+    filtro.innerHTML = '<option value="">Todas</option>' + acsUnicas.map(a => `<option value="${a}">${a}</option>`).join('');
+    filtro.onchange = renderizarFaltas;
+
+    renderizarFaltas();
+  }
+
+  function renderizarFaltas() {
+    const acsValor = document.getElementById('filtroACSFaltas').value;
+    const lista = document.getElementById('listaFaltas');
+    const filtrados = acsValor ? dadosFaltas.filter(d => d.ACS === acsValor) : dadosFaltas;
+
+    if (!filtrados.length) { lista.innerHTML = '<div>Nenhuma falta registrada.</div>'; return; }
+
+    lista.innerHTML = `
+      <div class="cabecalho-print">Relatório de faltas — busca ativa${acsValor ? ' — ACS: ' + acsValor : ''} — gerado em ${formatarDataBR(new Date().toISOString())} — ESF Flor do Cerrado</div>
+      ${filtrados.map(d => `
+        <div class="linha-falta">
+          <div class="nome">${d.NOME}</div>
+          <div class="dados">ACS: ${d.ACS} — Contato: ${d.CONTATO}</div>
+          <div class="dados">Faltou: ${d.TIPO} — ${formatarDataBR(d.DATA)}</div>
+        </div>
+      `).join('')}
+      <button class="btn-pdf" onclick="window.print()">Baixar / Imprimir PDF</button>
+    `;
   }
 
   // --------- Aba geral / por ACS ---------
