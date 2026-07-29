@@ -42,6 +42,13 @@
   .item-pendente { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin-top: 8px; font-size: 0.85rem; }
   .item-pendente .linha-controles { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
   .item-pendente select { margin: 0; }
+  .cron-linha { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.82rem; }
+  .cron-badge { font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
+  .cron-badge.compareceu { background: #e3f3e1; color: #1e5c1c; }
+  .cron-badge.faltou { background: #fbe3e3; color: #8a1c1c; }
+  .cron-badge.reagendado { background: #e0eefb; color: #1c4c8a; }
+  .cron-badge.agendado { background: #fff6da; color: #8a6d1c; }
+  .cron-badge.sugerida { background: #eee; color: #666; font-style: italic; }
   .hist-item { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 0.85rem; }
   #painelGestante { display: none; }
 </style>
@@ -75,6 +82,12 @@
     <div style="margin-top:14px;">
       <label style="margin-top:0;">Consultas aguardando confirmação</label>
       <div id="listaPendentes"></div>
+    </div>
+
+    <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
+      <label style="margin-top:0;">Cronograma sugerido (mínimo 7 consultas)</label>
+      <div id="listaCronograma"></div>
+      <div style="font-size:0.75rem; color:#888; margin-top:6px;">Datas calculadas em quarta-feira, alternando Médica/Enfermeira conforme a semana gestacional. Use como referência ao agendar.</div>
     </div>
 
     <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
@@ -173,6 +186,36 @@
 
     document.getElementById('DATA_AGENDA').value = g.PROXIMA_CONSULTA_SUGERIDA || '';
     carregarAtendimentos(g.ID_GESTANTE);
+    carregarCronograma(g.ID_GESTANTE);
+  }
+
+  function cronBadgeClasse(status) {
+    return (status || 'sugerida').toLowerCase();
+  }
+
+  function carregarCronograma(idGestante) {
+    const div = document.getElementById('listaCronograma');
+    div.innerHTML = 'Carregando...';
+    fetch(`${API_URL}?action=cronograma&idGestante=${idGestante}&key=${ACCESS_KEY}`)
+      .then(r => r.json())
+      .then(cron => {
+        if (!cron || !cron.consultas) { div.innerHTML = 'Não foi possível calcular o cronograma.'; return; }
+
+        div.innerHTML = cron.consultas.map(c => `
+          <div class="cron-linha">
+            <div>Consulta ${c.numero} — ${formatarDataBR(c.data)} — ${c.profissional}</div>
+            <div class="cron-badge ${cronBadgeClasse(c.status)}">${c.status}</div>
+          </div>
+        `).join('');
+
+        // pré-preenche o formulário de agendar com a primeira consulta ainda "Sugerida"
+        const proxima = cron.consultas.find(c => c.status === 'Sugerida');
+        if (proxima) {
+          document.getElementById('TIPO_AGENDA').value = proxima.profissional;
+          document.getElementById('DATA_AGENDA').value = proxima.data;
+        }
+      })
+      .catch(() => { div.innerHTML = 'Erro ao carregar cronograma.'; });
   }
 
   let todosAtendimentos = [];
@@ -233,6 +276,7 @@
           .then(res => {
             if (res.sucesso) {
               carregarAtendimentos(gestanteAtual.ID_GESTANTE);
+              carregarCronograma(gestanteAtual.ID_GESTANTE);
             } else {
               alert('Erro: ' + (res.erro || 'falha desconhecida'));
             }
@@ -279,6 +323,7 @@
           msgAgendar.className = 'ok';
           document.getElementById('TIPO_AGENDA').value = '';
           carregarAtendimentos(gestanteAtual.ID_GESTANTE);
+          carregarCronograma(gestanteAtual.ID_GESTANTE);
         } else {
           msgAgendar.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
           msgAgendar.className = 'erro';
