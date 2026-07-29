@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Relatórios - ESF Flor do Cerrado</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0F4B3D">
 <style>
   :root { --verde-escuro: #0F4B3D; --verde-claro: #B7D34A; }
   * { box-sizing: border-box; }
@@ -412,5 +416,10 @@
   }
 </script>
 
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
 </body>
 </html>
