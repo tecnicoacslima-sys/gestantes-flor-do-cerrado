@@ -88,6 +88,13 @@
 
 <div class="container">
   <div class="card">
+    <label>Importar do Protocolo de Solicitação de Agendamento (PDF)</label>
+    <input type="file" id="arquivoPDF" accept="application/pdf">
+    <div class="hint">Use só na abertura do pré-natal (documento "1ª vez"). Depois de cadastrada, use o nome ou o código G-000X.</div>
+    <div id="msgImportar"></div>
+  </div>
+
+  <div class="card">
     <form id="formCadastro">
       <label>Nome completo</label>
       <input type="text" id="NOME" required>
@@ -136,6 +143,53 @@
 <script>
   const API_URL = 'https://script.google.com/macros/s/AKfycbxkxt0KzOTbyc9CSMb_N7Y7HpCkyDc5QAPoahvtYDC-YwL-zHLtrF3HCBVIiWCZcyyoWg/exec';
   const ACCESS_KEY = 'FC_GEST2026'; // igual ao Code.gs
+
+  document.getElementById('arquivoPDF').addEventListener('change', function () {
+    const arquivo = this.files[0];
+    const msg = document.getElementById('msgImportar');
+    if (!arquivo) return;
+
+    msg.textContent = 'Lendo o PDF, aguarde...';
+    msg.className = 'ok';
+
+    const leitor = new FileReader();
+    leitor.onload = function () {
+      const base64 = leitor.result.split(',')[1];
+
+      fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'extrair_pdf', key: ACCESS_KEY, pdfBase64: base64 })
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res.sucesso) {
+            msg.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
+            msg.className = 'erro';
+            return;
+          }
+          const d = res.dados;
+
+          if (d.TIPO_CONSULTA && d.TIPO_CONSULTA.toLowerCase().indexOf('retorno') !== -1) {
+            msg.textContent = 'Atenção: este documento parece ser de RETORNO, não de 1ª vez. Confira se essa gestante já não está cadastrada antes de prosseguir.';
+            msg.className = 'erro';
+          } else {
+            msg.textContent = 'Dados importados! Revise antes de cadastrar (DUM, microárea e ACS não vêm neste documento).';
+            msg.className = 'ok';
+          }
+
+          if (d.NOME) document.getElementById('NOME').value = d.NOME;
+          if (d.CNS) document.getElementById('CNS').value = d.CNS;
+          if (d.DATA_NASCIMENTO) document.getElementById('DATA_NASCIMENTO').value = d.DATA_NASCIMENTO;
+          if (d.CONTATO) document.getElementById('CONTATO').value = d.CONTATO;
+          if (d.DATA_ABERTURA_PRENATAL_SUGERIDA) document.getElementById('DATA_ABERTURA_PRENATAL').value = d.DATA_ABERTURA_PRENATAL_SUGERIDA;
+        })
+        .catch(() => {
+          msg.textContent = 'Erro de conexão ao extrair o PDF.';
+          msg.className = 'erro';
+        });
+    };
+    leitor.readAsDataURL(arquivo);
+  });
 
   let listaACS = []; // [{MICROAREA, AGENTE_SAUDE}]
 
