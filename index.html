@@ -249,6 +249,10 @@
           msg.textContent = 'Cadastrada com sucesso! ID: ' + res.id + (res.dpp ? ' — DPP: ' + res.dpp : '');
           msg.className = 'ok';
           document.getElementById('formCadastro').reset();
+          document.getElementById('arquivoPDF').value = '';
+          document.getElementById('msgImportar').textContent = '';
+          document.getElementById('msgImportar').className = '';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
           msg.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
           msg.className = 'erro';
