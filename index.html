@@ -30,7 +30,7 @@
   header h1 { margin: 0; font-size: 1.2rem; }
   header p { margin: 4px 0 0; font-size: 0.85rem; opacity: 0.85; }
   .container { max-width: 480px; margin: 0 auto; padding: 16px; }
-  nav { display: flex; justify-content: center; gap: 10px; padding: 8px; background: #0c3b30; }
+  nav { display: flex; justify-content: center; gap: 10px; padding: 8px; background: #0c3b30; flex-wrap: wrap; }
   nav a { color: #fff; font-size: 0.8rem; text-decoration: none; opacity: 0.85; }
   nav a.ativo { opacity: 1; font-weight: 700; text-decoration: underline; }
   .card {
@@ -76,22 +76,6 @@
   #msg.ok { background: #e3f3e1; color: #1e5c1c; display: block; }
   #msg.erro { background: #fbe3e3; color: #8a1c1c; display: block; }
   .hint { font-size: 0.75rem; color: #777; margin-top: 2px; }
-  footer.credito {
-    text-align: center;
-    padding: 16px 0 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 0.75rem;
-    color: #999;
-  }
-  footer.credito svg { display: block; }
-  footer.credito a {
-    color: #6b8f2e;
-    text-decoration: none;
-  }
-  footer.credito a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -102,6 +86,7 @@
 </header>
 <nav>
   <a href="index.html" class="ativo">Cadastro</a>
+  <a href="agendamento.html">Agendamento</a>
   <a href="atendimento.html">Atendimento</a>
   <a href="relatorios.html">Relatórios</a>
 </nav>
@@ -290,15 +275,5 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 </script>
-
-<footer class="credito">
-  <svg viewBox="0 0 200 200" width="16" height="16">
-    <path d="M22,52 C95,52 118,84 148,100" fill="none" stroke="#6b8f2e" stroke-width="9" stroke-linecap="round" opacity="0.55"/>
-    <path d="M22,100 C95,100 122,100 148,100" fill="none" stroke="#6b8f2e" stroke-width="9" stroke-linecap="round" opacity="0.8"/>
-    <path d="M22,148 C95,148 118,116 148,100" fill="none" stroke="#6b8f2e" stroke-width="9" stroke-linecap="round" opacity="0.55"/>
-    <circle cx="150" cy="100" r="18" fill="#6b8f2e"/>
-  </svg>
-  <a href="https://antonioresolve.com.br" target="_blank" rel="noopener">antonioresolve.com.br</a>
-</footer>
 </body>
 </html>

@@ -15,7 +15,7 @@
   header { background: var(--verde-escuro); color: #fff; padding: 16px; text-align: center; }
   header h1 { margin: 0; font-size: 1.15rem; }
   header p { margin: 4px 0 0; font-size: 0.82rem; opacity: 0.85; }
-  nav { display: flex; justify-content: center; gap: 10px; padding: 8px; background: #0c3b30; }
+  nav { display: flex; justify-content: center; gap: 10px; padding: 8px; background: #0c3b30; flex-wrap: wrap; }
   nav a { color: #fff; font-size: 0.8rem; text-decoration: none; opacity: 0.85; }
   nav a.ativo { opacity: 1; font-weight: 700; text-decoration: underline; }
   .container { max-width: 480px; margin: 0 auto; padding: 16px; }
@@ -24,6 +24,8 @@
   input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
   button { width: 100%; background: var(--verde-escuro); color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 600; margin-top: 16px; }
   button.secundario { background: #6b7d78; }
+  button.mini { width: auto; padding: 6px 12px; font-size: 0.8rem; margin-top: 0; }
+  button.link { width: auto; background: none; color: var(--verde-escuro); text-decoration: underline; font-weight: 600; padding: 4px 0; margin-top: 8px; }
   button:active { opacity: 0.85; }
   #msg, #msgAt, #msgDtpa, #msgExame { margin-top: 14px; padding: 10px; border-radius: 6px; font-size: 0.9rem; display: none; }
   #msg.ok, #msgAt.ok, #msgDtpa.ok, #msgExame.ok { background: #e3f3e1; color: #1e5c1c; display: block; }
@@ -39,6 +41,9 @@
   .badge.agendado { background: #fff6da; color: #8a6d1c; }
   .badge.reagendado { background: #e0eefb; color: #1c4c8a; }
   .hist-item { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 0.85rem; }
+  .item-pendente { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin-top: 8px; font-size: 0.85rem; cursor: pointer; }
+  .item-pendente:active { background: #f0f0f0; }
+  .item-pendente.selecionado { border-color: var(--verde-escuro); background: #f4f9f3; }
   .check-exame { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
   .check-exame input[type="checkbox"] { width: auto; }
   .check-exame.ja-registrado { color: #999; }
@@ -46,16 +51,18 @@
   #selecionarTodos { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 6px 0; }
   #selecionarTodos input { width: auto; }
   #painelGestante { display: none; }
+  #painelClinico { display: none; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Registro de Atendimento</h1>
+  <h1>Atendimento Clínico</h1>
   <p>ESF Flor do Cerrado</p>
 </header>
 <nav>
   <a href="index.html">Cadastro</a>
+  <a href="agendamento.html">Agendamento</a>
   <a href="atendimento.html" class="ativo">Atendimento</a>
   <a href="relatorios.html">Relatórios</a>
 </nav>
@@ -72,49 +79,22 @@
 
   <div class="card" id="painelGestante">
     <div id="fichaGestante"></div>
-    <div id="historico"></div>
-    <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
-      <label>Registrar exames</label>
-      <select id="TRIMESTRE_EXAME"><option value="">Selecione o trimestre...</option></select>
-      <div id="listaCheckExames" style="margin-top:8px;"></div>
-      <label>Data de solicitação (emissão)</label>
-      <input type="date" id="DATA_SOLICITADO">
-      <label>Data de realização (coleta)</label>
-      <input type="date" id="DATA_REALIZADO">
-      <button id="btnExame" class="secundario" type="button">Registrar exames selecionados</button>
-      <div id="msgExame"></div>
-      <div id="historicoExames" style="margin-top:10px;"></div>
-    </div>
-    <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
-      <label>Registrar vacina DTPA</label>
-      <input type="date" id="DATA_DTPA">
-      <button id="btnDtpa" class="secundario" type="button">Registrar DTPA</button>
-      <div id="msgDtpa"></div>
+
+    <div style="margin-top:14px;">
+      <label style="margin-top:0;">Consultas agendadas aguardando registro</label>
+      <div id="listaPendentes"></div>
+      <div id="historico" style="margin-top:10px;"></div>
     </div>
   </div>
 
-  <div class="card" id="painelForm" style="display:none;">
-    <form id="formAtendimento">
-      <label>Tipo de atendimento</label>
-      <select id="TIPO" required>
-        <option value="">Selecione...</option>
-        <option>Médica</option>
-        <option>Enfermeira</option>
-        <option>Odonto</option>
-        <option>ACS - Gestação</option>
-        <option>ACS - Puerpério</option>
-        <option>Puerpério (1ª consulta)</option>
-      </select>
-
-      <label>Data agendada</label>
-      <input type="date" id="DATA_AGENDADA">
-
+  <div class="card" id="painelClinico">
+    <div id="cabecalhoClinico" style="font-weight:700; color:var(--verde-escuro); margin-bottom:8px;"></div>
+    <form id="formClinico">
       <label>Data realizada</label>
       <input type="date" id="DATA_REALIZADA">
 
       <label>Status</label>
       <select id="STATUS">
-        <option>Agendado</option>
         <option>Compareceu</option>
         <option>Faltou</option>
         <option>Reagendado</option>
@@ -135,9 +115,57 @@
       <label>Observações</label>
       <textarea id="OBSERVACOES" rows="2"></textarea>
 
-      <button type="submit">Registrar atendimento</button>
+      <button type="submit">Salvar atendimento</button>
     </form>
     <div id="msgAt"></div>
+  </div>
+
+  <div class="card" id="painelAvulso" style="display:none;">
+    <button type="button" class="link" id="btnMostrarAvulso">+ Registrar atendimento avulso (não agendado antes)</button>
+    <form id="formAvulso" style="display:none;">
+      <label>Tipo de atendimento</label>
+      <select id="TIPO_AVULSO" required>
+        <option value="">Selecione...</option>
+        <option>Médica</option>
+        <option>Enfermeira</option>
+        <option>Odonto</option>
+        <option>ACS - Gestação</option>
+        <option>ACS - Puerpério</option>
+        <option>Puerpério (1ª consulta)</option>
+      </select>
+      <label>Profissional</label>
+      <input type="text" id="PROFISSIONAL_AVULSO">
+      <label>Pressão arterial</label>
+      <input type="text" id="PA_AVULSO" placeholder="ex.: 110/70">
+      <label>Peso (kg)</label>
+      <input type="text" id="PESO_AVULSO">
+      <label>Altura (m)</label>
+      <input type="text" id="ALTURA_AVULSO">
+      <label>Observações</label>
+      <textarea id="OBS_AVULSO" rows="2"></textarea>
+      <button type="submit">Registrar atendimento avulso</button>
+    </form>
+    <div id="msgAvulso"></div>
+  </div>
+
+  <div class="card" id="painelExames" style="display:none;">
+    <label style="margin-top:0;">Registrar exames</label>
+    <select id="TRIMESTRE_EXAME"><option value="">Selecione o trimestre...</option></select>
+    <div id="listaCheckExames" style="margin-top:8px;"></div>
+    <label>Data de solicitação (emissão)</label>
+    <input type="date" id="DATA_SOLICITADO">
+    <label>Data de realização (coleta)</label>
+    <input type="date" id="DATA_REALIZADO">
+    <button id="btnExame" class="secundario" type="button">Registrar exames selecionados</button>
+    <div id="msgExame"></div>
+    <div id="historicoExames" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="card" id="painelVacina" style="display:none;">
+    <label style="margin-top:0;">Registrar vacina DTPA</label>
+    <input type="date" id="DATA_DTPA">
+    <button id="btnDtpa" class="secundario" type="button">Registrar DTPA</button>
+    <div id="msgDtpa"></div>
   </div>
 
 </div>
@@ -147,8 +175,8 @@
   const ACCESS_KEY = 'FC_GEST2026';
 
   let gestanteAtual = null;
+  let atendimentoSelecionadoId = null;
 
-  // Converte AAAA-MM-DD (ou vazio) para DD/MM/AAAA, só para exibição
   function formatarDataBR(iso) {
     if (!iso) return '-';
     const partes = String(iso).split('T')[0].split('-');
@@ -200,10 +228,14 @@
 
   function selecionarGestante(g) {
     gestanteAtual = g;
+    atendimentoSelecionadoId = null;
     document.getElementById('resultados').innerHTML = '';
     document.getElementById('busca').value = '';
     document.getElementById('painelGestante').style.display = 'block';
-    document.getElementById('painelForm').style.display = 'block';
+    document.getElementById('painelAvulso').style.display = 'block';
+    document.getElementById('painelExames').style.display = 'block';
+    document.getElementById('painelVacina').style.display = 'block';
+    document.getElementById('painelClinico').style.display = 'none';
 
     document.getElementById('fichaGestante').innerHTML = `
       <div class="ficha-linha"><b>${g.NOME}</b> (${g.ID_GESTANTE})</div>
@@ -213,33 +245,160 @@
       <div class="ficha-linha">ACS: <b>${g.AGENTE_SAUDE || '-'}</b> (microárea ${g.MICROAREA || '-'})</div>
     `;
 
-    carregarHistorico(g.ID_GESTANTE);
+    carregarAtendimentos(g.ID_GESTANTE);
     carregarHistoricoExames(g.ID_GESTANTE);
   }
 
-  function carregarHistorico(idGestante) {
-    const historico = document.getElementById('historico');
-    historico.innerHTML = '<div class="ficha-linha">Carregando histórico...</div>';
+  let todosAtendimentos = [];
+
+  function carregarAtendimentos(idGestante) {
     fetch(`${API_URL}?action=atendimentos_listar&idGestante=${idGestante}&key=${ACCESS_KEY}`)
       .then(r => r.json())
       .then(lista => {
-        if (!lista.length) {
-          historico.innerHTML = '<div class="ficha-linha">Nenhum atendimento registrado ainda.</div>';
-          return;
-        }
-        historico.innerHTML = '<div class="ficha-linha" style="margin-top:10px;"><b>Histórico</b></div>' +
-          lista.map(a => `
-            <div class="hist-item">
-              ${a.TIPO} — ${formatarDataBR(a.DATA_AGENDADA)}
-              <span class="badge ${badgeClasse(a.STATUS)}">${a.STATUS || 'Agendado'}</span>
-            </div>
-          `).join('');
+        todosAtendimentos = lista;
+        renderizarPendentes();
+        renderizarHistorico();
       })
-      .catch(() => { historico.innerHTML = '<div class="ficha-linha">Erro ao carregar histórico.</div>'; });
+      .catch(() => {
+        document.getElementById('listaPendentes').innerHTML = 'Erro ao carregar.';
+      });
   }
 
-  let examesPadrao = []; // [{TRIMESTRE, EXAME}]
-  let examesJaRegistrados = []; // nomes de exames já registrados no trimestre atual, para essa gestante
+  function renderizarPendentes() {
+    const pendentes = todosAtendimentos.filter(a => a.STATUS === 'Agendado' || a.STATUS === 'Reagendado');
+    const div = document.getElementById('listaPendentes');
+    if (!pendentes.length) { div.innerHTML = '<div class="ficha-linha">Nenhuma consulta agendada. Use a tela de Agendamento para marcar uma.</div>'; return; }
+
+    div.innerHTML = pendentes.map(a => `
+      <div class="item-pendente ${a.ID_ATENDIMENTO === atendimentoSelecionadoId ? 'selecionado' : ''}" data-id="${a.ID_ATENDIMENTO}">
+        ${a.TIPO} — ${formatarDataBR(a.DATA_AGENDADA)} <span class="badge ${badgeClasse(a.STATUS)}">${a.STATUS}</span>
+      </div>
+    `).join('');
+
+    div.querySelectorAll('.item-pendente').forEach(itemDiv => {
+      itemDiv.addEventListener('click', () => abrirPainelClinico(itemDiv.getAttribute('data-id')));
+    });
+  }
+
+  function renderizarHistorico() {
+    const historico = document.getElementById('historico');
+    const realizados = todosAtendimentos.filter(a => a.STATUS !== 'Agendado' && a.STATUS !== 'Reagendado');
+    if (!realizados.length) { historico.innerHTML = ''; return; }
+    historico.innerHTML = '<div class="ficha-linha" style="margin-top:6px;"><b>Histórico</b></div>' +
+      realizados.map(a => `
+        <div class="hist-item">
+          ${a.TIPO} — ${formatarDataBR(a.DATA_AGENDADA)}
+          <span class="badge ${badgeClasse(a.STATUS)}">${a.STATUS}</span>
+        </div>
+      `).join('');
+  }
+
+  function abrirPainelClinico(id) {
+    atendimentoSelecionadoId = id;
+    const at = todosAtendimentos.find(a => a.ID_ATENDIMENTO === id);
+    if (!at) return;
+
+    renderizarPendentes(); // re-renderiza pra destacar o selecionado
+
+    document.getElementById('cabecalhoClinico').textContent = `${at.TIPO} — agendado para ${formatarDataBR(at.DATA_AGENDADA)}`;
+    document.getElementById('DATA_REALIZADA').value = new Date().toISOString().split('T')[0];
+    document.getElementById('STATUS').value = 'Compareceu';
+    document.getElementById('PROFISSIONAL').value = at.PROFISSIONAL || '';
+    document.getElementById('PRESSAO_ARTERIAL').value = '';
+    document.getElementById('PESO').value = '';
+    document.getElementById('ALTURA').value = '';
+    document.getElementById('OBSERVACOES').value = '';
+    document.getElementById('painelClinico').style.display = 'block';
+    document.getElementById('painelClinico').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  document.getElementById('formClinico').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!atendimentoSelecionadoId) return;
+    const msgAt = document.getElementById('msgAt');
+
+    const dados = {
+      DATA_REALIZADA: document.getElementById('DATA_REALIZADA').value,
+      STATUS: document.getElementById('STATUS').value,
+      PROFISSIONAL: document.getElementById('PROFISSIONAL').value,
+      PRESSAO_ARTERIAL: document.getElementById('PRESSAO_ARTERIAL').value,
+      PESO: document.getElementById('PESO').value,
+      ALTURA: document.getElementById('ALTURA').value,
+      OBSERVACOES: document.getElementById('OBSERVACOES').value
+    };
+
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'atendimento_atualizar', key: ACCESS_KEY, id: atendimentoSelecionadoId, dados: dados })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.sucesso) {
+          msgAt.textContent = 'Atendimento salvo com sucesso!';
+          msgAt.className = 'ok';
+          atendimentoSelecionadoId = null;
+          document.getElementById('painelClinico').style.display = 'none';
+          carregarAtendimentos(gestanteAtual.ID_GESTANTE);
+        } else {
+          msgAt.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
+          msgAt.className = 'erro';
+        }
+      })
+      .catch(() => {
+        msgAt.textContent = 'Erro de conexão com o servidor.';
+        msgAt.className = 'erro';
+      });
+  });
+
+  // --------- Atendimento avulso (não agendado antes) ---------
+  document.getElementById('btnMostrarAvulso').addEventListener('click', function () {
+    const form = document.getElementById('formAvulso');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  });
+
+  document.getElementById('formAvulso').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!gestanteAtual) return;
+    const msgAvulso = document.getElementById('msgAvulso');
+    const hoje = new Date().toISOString().split('T')[0];
+
+    const dados = {
+      ID_GESTANTE: gestanteAtual.ID_GESTANTE,
+      TIPO: document.getElementById('TIPO_AVULSO').value,
+      DATA_AGENDADA: hoje,
+      DATA_REALIZADA: hoje,
+      STATUS: 'Compareceu',
+      PROFISSIONAL: document.getElementById('PROFISSIONAL_AVULSO').value,
+      PRESSAO_ARTERIAL: document.getElementById('PA_AVULSO').value,
+      PESO: document.getElementById('PESO_AVULSO').value,
+      ALTURA: document.getElementById('ALTURA_AVULSO').value,
+      OBSERVACOES: document.getElementById('OBS_AVULSO').value
+    };
+
+    if (!dados.TIPO) { msgAvulso.textContent = 'Selecione o tipo.'; msgAvulso.className = 'erro'; return; }
+
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'atendimento_cadastrar', key: ACCESS_KEY, dados: dados })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.sucesso) {
+          msgAvulso.textContent = 'Atendimento avulso registrado!';
+          msgAvulso.className = 'ok';
+          document.getElementById('formAvulso').reset();
+          carregarAtendimentos(gestanteAtual.ID_GESTANTE);
+        } else {
+          msgAvulso.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
+          msgAvulso.className = 'erro';
+        }
+      })
+      .catch(() => { msgAvulso.textContent = 'Erro de conexão.'; msgAvulso.className = 'erro'; });
+  });
+
+  // --------- Exames ---------
+  let examesPadrao = [];
+  let examesJaRegistrados = [];
 
   fetch(`${API_URL}?action=exames_padrao&key=${ACCESS_KEY}`)
     .then(r => r.json())
@@ -256,7 +415,6 @@
     container.innerHTML = '';
     if (!trimestre || !gestanteAtual) return;
 
-    // busca o que já foi registrado nesse trimestre, pra não deixar marcar de novo
     const todos = await fetch(`${API_URL}?action=exames_listar&idGestante=${gestanteAtual.ID_GESTANTE}&key=${ACCESS_KEY}`).then(r => r.json());
     examesJaRegistrados = todos.filter(ex => String(ex.TRIMESTRE) === trimestre).map(ex => ex.EXAME);
 
@@ -339,6 +497,7 @@
       .catch(() => { msgExame.textContent = 'Erro de conexão.'; msgExame.className = 'erro'; });
   });
 
+  // --------- Vacina DTPA ---------
   document.getElementById('btnDtpa').addEventListener('click', function () {
     if (!gestanteAtual) return;
     const msgDtpa = document.getElementById('msgDtpa');
@@ -364,47 +523,6 @@
         }
       })
       .catch(() => { msgDtpa.textContent = 'Erro de conexão.'; msgDtpa.className = 'erro'; });
-  });
-
-  document.getElementById('formAtendimento').addEventListener('submit', function (e) {
-    e.preventDefault();
-    if (!gestanteAtual) return;
-    const msgAt = document.getElementById('msgAt');
-    msgAt.style.display = 'none';
-
-    const dados = {
-      ID_GESTANTE: gestanteAtual.ID_GESTANTE,
-      TIPO: document.getElementById('TIPO').value,
-      DATA_AGENDADA: document.getElementById('DATA_AGENDADA').value,
-      DATA_REALIZADA: document.getElementById('DATA_REALIZADA').value,
-      STATUS: document.getElementById('STATUS').value,
-      PROFISSIONAL: document.getElementById('PROFISSIONAL').value,
-      PRESSAO_ARTERIAL: document.getElementById('PRESSAO_ARTERIAL').value,
-      PESO: document.getElementById('PESO').value,
-      ALTURA: document.getElementById('ALTURA').value,
-      OBSERVACOES: document.getElementById('OBSERVACOES').value
-    };
-
-    fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'atendimento_cadastrar', key: ACCESS_KEY, dados: dados })
-    })
-      .then(r => r.json())
-      .then(res => {
-        if (res.sucesso) {
-          msgAt.textContent = 'Atendimento registrado! ID: ' + res.id;
-          msgAt.className = 'ok';
-          document.getElementById('formAtendimento').reset();
-          carregarHistorico(gestanteAtual.ID_GESTANTE);
-        } else {
-          msgAt.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
-          msgAt.className = 'erro';
-        }
-      })
-      .catch(() => {
-        msgAt.textContent = 'Erro de conexão com o servidor.';
-        msgAt.className = 'erro';
-      });
   });
 </script>
 

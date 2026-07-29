@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agendamento - ESF Flor do Cerrado</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0F4B3D">
+<style>
+  :root { --verde-escuro: #0F4B3D; --verde-claro: #B7D34A; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f4; margin: 0; padding: 0 0 40px 0; color: #222; }
+  header { background: var(--verde-escuro); color: #fff; padding: 16px; text-align: center; }
+  header h1 { margin: 0; font-size: 1.15rem; }
+  header p { margin: 4px 0 0; font-size: 0.82rem; opacity: 0.85; }
+  nav { display: flex; justify-content: center; gap: 10px; padding: 8px; background: #0c3b30; flex-wrap: wrap; }
+  nav a { color: #fff; font-size: 0.8rem; text-decoration: none; opacity: 0.85; }
+  nav a.ativo { opacity: 1; font-weight: 700; text-decoration: underline; }
+  .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; color: var(--verde-escuro); }
+  input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+  button { width: 100%; background: var(--verde-escuro); color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 1rem; font-weight: 600; margin-top: 16px; }
+  button.secundario { background: #6b7d78; }
+  button.mini { width: auto; padding: 6px 12px; font-size: 0.8rem; margin-top: 0; }
+  button:active { opacity: 0.85; }
+  #msg, #msgAgendar { margin-top: 14px; padding: 10px; border-radius: 6px; font-size: 0.9rem; display: none; }
+  #msg.ok, #msgAgendar.ok { background: #e3f3e1; color: #1e5c1c; display: block; }
+  #msg.erro, #msgAgendar.erro { background: #fbe3e3; color: #8a1c1c; display: block; }
+  .resultado-item { padding: 10px; border: 1px solid #e0e0e0; border-radius: 6px; margin-top: 8px; cursor: pointer; }
+  .resultado-item:active { background: #f0f0f0; }
+  .resultado-item b { color: var(--verde-escuro); }
+  .ficha-linha { font-size: 0.9rem; margin: 4px 0; }
+  .ficha-linha b { color: var(--verde-escuro); }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+  .badge.compareceu { background: #e3f3e1; color: #1e5c1c; }
+  .badge.faltou { background: #fbe3e3; color: #8a1c1c; }
+  .badge.agendado { background: #fff6da; color: #8a6d1c; }
+  .badge.reagendado { background: #e0eefb; color: #1c4c8a; }
+  .item-pendente { border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px; margin-top: 8px; font-size: 0.85rem; }
+  .item-pendente .linha-controles { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .item-pendente select { margin: 0; }
+  .hist-item { border-bottom: 1px solid #eee; padding: 8px 0; font-size: 0.85rem; }
+  #painelGestante { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Agendamento</h1>
+  <p>ESF Flor do Cerrado</p>
+</header>
+<nav>
+  <a href="index.html">Cadastro</a>
+  <a href="agendamento.html" class="ativo">Agendamento</a>
+  <a href="atendimento.html">Atendimento</a>
+  <a href="relatorios.html">Relatórios</a>
+</nav>
+
+<div class="container">
+
+  <div class="card">
+    <label>Buscar gestante (nome ou ID)</label>
+    <input type="text" id="busca" placeholder="Digite o nome ou G-0001">
+    <button id="btnBuscar">Buscar</button>
+    <div id="msg"></div>
+    <div id="resultados"></div>
+  </div>
+
+  <div class="card" id="painelGestante">
+    <div id="fichaGestante"></div>
+
+    <div style="margin-top:14px;">
+      <label style="margin-top:0;">Consultas aguardando confirmação</label>
+      <div id="listaPendentes"></div>
+    </div>
+
+    <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
+      <label>Agendar próxima consulta</label>
+      <select id="TIPO_AGENDA" required>
+        <option value="">Selecione o tipo...</option>
+        <option>Médica</option>
+        <option>Enfermeira</option>
+        <option>Odonto</option>
+        <option>ACS - Gestação</option>
+        <option>ACS - Puerpério</option>
+        <option>Puerpério (1ª consulta)</option>
+      </select>
+      <label>Data agendada</label>
+      <input type="date" id="DATA_AGENDA">
+      <button id="btnAgendar" class="secundario" type="button">Agendar</button>
+      <div id="msgAgendar"></div>
+    </div>
+
+    <div style="margin-top:14px; padding-top:10px; border-top:1px solid #eee;">
+      <label style="margin-top:0;">Histórico completo</label>
+      <div id="historico"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API_URL = 'https://script.google.com/macros/s/AKfycbxkxt0KzOTbyc9CSMb_N7Y7HpCkyDc5QAPoahvtYDC-YwL-zHLtrF3HCBVIiWCZcyyoWg/exec';
+  const ACCESS_KEY = 'FC_GEST2026';
+
+  let gestanteAtual = null;
+
+  function formatarDataBR(iso) {
+    if (!iso) return '-';
+    const partes = String(iso).split('T')[0].split('-');
+    if (partes.length !== 3) return iso;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
+  function badgeClasse(status) {
+    const s = (status || '').toLowerCase();
+    if (s === 'compareceu') return 'compareceu';
+    if (s === 'faltou') return 'faltou';
+    if (s === 'reagendado') return 'reagendado';
+    return 'agendado';
+  }
+
+  document.getElementById('btnBuscar').addEventListener('click', function () {
+    const termo = document.getElementById('busca').value.trim().toLowerCase();
+    const msg = document.getElementById('msg');
+    const resultados = document.getElementById('resultados');
+    resultados.innerHTML = '';
+    msg.style.display = 'none';
+    if (!termo) return;
+
+    fetch(`${API_URL}?action=listar&key=${ACCESS_KEY}`)
+      .then(r => r.json())
+      .then(lista => {
+        const achados = lista.filter(g =>
+          (g.NOME || '').toLowerCase().includes(termo) ||
+          (g.ID_GESTANTE || '').toLowerCase().includes(termo)
+        );
+        if (!achados.length) {
+          msg.textContent = 'Nenhuma gestante encontrada.';
+          msg.className = 'erro';
+          return;
+        }
+        achados.forEach(g => {
+          const div = document.createElement('div');
+          div.className = 'resultado-item';
+          div.innerHTML = `<b>${g.NOME}</b><br>${g.ID_GESTANTE} — IG: ${g.IG_ATUAL_SEMANAS ?? '-'} semanas`;
+          div.addEventListener('click', () => selecionarGestante(g));
+          resultados.appendChild(div);
+        });
+      })
+      .catch(() => {
+        msg.textContent = 'Erro de conexão com o servidor.';
+        msg.className = 'erro';
+      });
+  });
+
+  function selecionarGestante(g) {
+    gestanteAtual = g;
+    document.getElementById('resultados').innerHTML = '';
+    document.getElementById('busca').value = '';
+    document.getElementById('painelGestante').style.display = 'block';
+
+    document.getElementById('fichaGestante').innerHTML = `
+      <div class="ficha-linha"><b>${g.NOME}</b> (${g.ID_GESTANTE})</div>
+      <div class="ficha-linha">IG atual: <b>${g.IG_ATUAL_SEMANAS ?? '-'}</b> semanas</div>
+      <div class="ficha-linha">DPP: <b>${formatarDataBR(g.DPP)}</b></div>
+      <div class="ficha-linha">Próxima consulta sugerida: <b>${formatarDataBR(g.PROXIMA_CONSULTA_SUGERIDA)}</b></div>
+      <div class="ficha-linha">ACS: <b>${g.AGENTE_SAUDE || '-'}</b> (microárea ${g.MICROAREA || '-'})</div>
+    `;
+
+    document.getElementById('DATA_AGENDA').value = g.PROXIMA_CONSULTA_SUGERIDA || '';
+    carregarAtendimentos(g.ID_GESTANTE);
+  }
+
+  let todosAtendimentos = [];
+
+  function carregarAtendimentos(idGestante) {
+    fetch(`${API_URL}?action=atendimentos_listar&idGestante=${idGestante}&key=${ACCESS_KEY}`)
+      .then(r => r.json())
+      .then(lista => {
+        todosAtendimentos = lista;
+        renderizarPendentes();
+        renderizarHistorico();
+      })
+      .catch(() => {
+        document.getElementById('listaPendentes').innerHTML = 'Erro ao carregar.';
+        document.getElementById('historico').innerHTML = 'Erro ao carregar.';
+      });
+  }
+
+  function renderizarPendentes() {
+    const pendentes = todosAtendimentos.filter(a => a.STATUS === 'Agendado' || a.STATUS === 'Reagendado');
+    const div = document.getElementById('listaPendentes');
+    if (!pendentes.length) { div.innerHTML = '<div class="ficha-linha">Nenhuma consulta pendente.</div>'; return; }
+
+    div.innerHTML = pendentes.map(a => `
+      <div class="item-pendente" data-id="${a.ID_ATENDIMENTO}">
+        <div>${a.TIPO} — ${formatarDataBR(a.DATA_AGENDADA)} <span class="badge ${badgeClasse(a.STATUS)}">${a.STATUS}</span></div>
+        <div class="linha-controles">
+          <select class="select-status">
+            <option value="Agendado" ${a.STATUS === 'Agendado' ? 'selected' : ''}>Agendado</option>
+            <option value="Compareceu">Compareceu</option>
+            <option value="Faltou">Faltou</option>
+            <option value="Reagendado">Reagendado</option>
+          </select>
+          <input type="date" class="input-nova-data" style="display:none;" placeholder="Nova data">
+          <button class="mini btn-salvar-status" type="button">Salvar</button>
+        </div>
+      </div>
+    `).join('');
+
+    div.querySelectorAll('.item-pendente').forEach(itemDiv => {
+      const selStatus = itemDiv.querySelector('.select-status');
+      const inputData = itemDiv.querySelector('.input-nova-data');
+      selStatus.addEventListener('change', () => {
+        inputData.style.display = selStatus.value === 'Reagendado' ? 'block' : 'none';
+      });
+      itemDiv.querySelector('.btn-salvar-status').addEventListener('click', () => {
+        const id = itemDiv.getAttribute('data-id');
+        const novoStatus = selStatus.value;
+        const dados = { STATUS: novoStatus };
+        if (novoStatus === 'Reagendado' && inputData.value) dados.DATA_AGENDADA = inputData.value;
+        if (novoStatus === 'Compareceu') dados.DATA_REALIZADA = new Date().toISOString().split('T')[0];
+
+        fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: 'atendimento_atualizar', key: ACCESS_KEY, id: id, dados: dados })
+        })
+          .then(r => r.json())
+          .then(res => {
+            if (res.sucesso) {
+              carregarAtendimentos(gestanteAtual.ID_GESTANTE);
+            } else {
+              alert('Erro: ' + (res.erro || 'falha desconhecida'));
+            }
+          })
+          .catch(() => alert('Erro de conexão.'));
+      });
+    });
+  }
+
+  function renderizarHistorico() {
+    const historico = document.getElementById('historico');
+    if (!todosAtendimentos.length) { historico.innerHTML = '<div class="ficha-linha">Nenhum atendimento registrado ainda.</div>'; return; }
+    historico.innerHTML = todosAtendimentos.map(a => `
+      <div class="hist-item">
+        ${a.TIPO} — ${formatarDataBR(a.DATA_AGENDADA)}
+        <span class="badge ${badgeClasse(a.STATUS)}">${a.STATUS || 'Agendado'}</span>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('btnAgendar').addEventListener('click', function () {
+    if (!gestanteAtual) return;
+    const msgAgendar = document.getElementById('msgAgendar');
+    const tipo = document.getElementById('TIPO_AGENDA').value;
+    const data = document.getElementById('DATA_AGENDA').value;
+
+    if (!tipo || !data) {
+      msgAgendar.textContent = 'Selecione o tipo e a data.';
+      msgAgendar.className = 'erro';
+      return;
+    }
+
+    fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'atendimento_cadastrar', key: ACCESS_KEY,
+        dados: { ID_GESTANTE: gestanteAtual.ID_GESTANTE, TIPO: tipo, DATA_AGENDADA: data, STATUS: 'Agendado' }
+      })
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.sucesso) {
+          msgAgendar.textContent = 'Consulta agendada! ID: ' + res.id;
+          msgAgendar.className = 'ok';
+          document.getElementById('TIPO_AGENDA').value = '';
+          carregarAtendimentos(gestanteAtual.ID_GESTANTE);
+        } else {
+          msgAgendar.textContent = 'Erro: ' + (res.erro || 'falha desconhecida');
+          msgAgendar.className = 'erro';
+        }
+      })
+      .catch(() => { msgAgendar.textContent = 'Erro de conexão.'; msgAgendar.className = 'erro'; });
+  });
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
